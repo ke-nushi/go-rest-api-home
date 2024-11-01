@@ -44,7 +44,7 @@ var tasks = map[string]Task{
 // Ниже напишите обработчики для каждого эндпоинта
 // ...
 
-func getAllTasks(w http.ResponseWriter, r *http.Request) {
+func getTasks(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(tasks)
 	if err != nil {
@@ -57,11 +57,16 @@ func getAllTasks(w http.ResponseWriter, r *http.Request) {
 	// так как все успешно, то статус OK
 	w.WriteHeader(http.StatusOK)
 	// записываем сериализованные в JSON данные в тело ответа
-	w.Write(resp)
+	if _, err := w.Write(resp); err != nil {
+
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+
+	}
 
 }
 
-func taskToServer(w http.ResponseWriter, r *http.Request) {
+func addTask(w http.ResponseWriter, r *http.Request) {
 
 	var task Task
 	var buf bytes.Buffer
@@ -77,13 +82,20 @@ func taskToServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := tasks[task.ID]; ok {
+
+		http.Error(w, "Задача уже создана", http.StatusBadRequest)
+		return
+
+	}
+
 	tasks[task.ID] = task
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 }
 
-func getTaskId(w http.ResponseWriter, r *http.Request) {
+func getTask(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 
@@ -103,7 +115,13 @@ func getTaskId(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+
+	if _, err := w.Write(resp); err != nil {
+
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+
+	}
 
 }
 
@@ -132,11 +150,11 @@ func main() {
 	// здесь регистрируйте ваши обработчики
 	// ...
 
-	r.Get("/tasks", getAllTasks)
+	r.Get("/tasks", getTasks)
 
-	r.Post("/tasks", taskToServer)
+	r.Post("/tasks", addTask)
 
-	r.Get("/tasks/{id}", getTaskId)
+	r.Get("/tasks/{id}", getTask)
 
 	r.Delete("/tasks/{id}", deleteTask)
 
